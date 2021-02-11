@@ -1,6 +1,6 @@
 # :cyclone: Proton
 
-Proton is a gateway which houses all daystram's applications at daystram.com. It runs a Kubernetes cluster (the gateway runs the master node), allowing the addition of other worker nodes hosted on other premises to increase computing capacity while also keeping the VPS cost low. [K3s](https://k3s.io/) distribution is selected for its lightweight resource requirements.
+Proton is a gateway which houses all daystram's applications at [daystram.com](https://daystram.com). It runs a Kubernetes cluster (the gateway runs the master node), allowing the addition of other worker nodes hosted on other premises to increase computing capacity while also keeping the VPS cost low. [K3s](https://k3s.io/) distribution is selected for its lightweight resource requirements.
 
 Proton also acts as a [WireGuard](https://www.wireguard.com/) VPN server, as the worker nodes will attach to the cluster via this virtual network. This allows the worker nodes to lie behind a NAT'd network (e.g. homelabs or home servers) and lose the requirement to have a public IP or to expose any ports.
 
@@ -119,6 +119,8 @@ Note the IP range is set to the VPN client IP range, keep these consistent. This
 
 #### 6. Install cert-manager
 
+cert-manager helps with issuing new X509 certificates for applications that require them. By creating Certificate objects (a CRD from cert-manger), a new certificate will be claimed from [Let's Encrypt](https://letsencrypt.org/) using the HTTP solver. This certificate is then used by Traefik's `websecure` endpoint. See https://cert-manager.io/docs/ for more info.
+
 Add the repository.
 
 ```shell
@@ -172,7 +174,7 @@ $ apt install wireguard resolvconf
 
 #### 2. Setup WireGuard Client
 
-Same method as settting up WireGuard server, see [2. Setup WireGuard Server](#2.-setup-wireguard-server)
+Same method as settting up WireGuard server, see [2. Setup WireGuard Server](#2-setup-wireguard-server)
 
 #### 3. Install K3s Agent
 
