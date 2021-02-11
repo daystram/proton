@@ -1,16 +1,22 @@
-# K8s Agent Setup
+# :cyclone: Proton
 
-This guide will setup a master node (tailored to be setup in a VPS) and worker nodes (which lies behind a NAT, e.g. home network). A WireGuard VPN is used to join their networks together, avoiding issues with NAT and the requirement to have public IP on the worker nodes (still required for the master node).
+Proton is a gateway which houses all daystram's applications at daystram.com. It runs a Kubernetes cluster (the gateway runs the master node), allowing the addition of other worker nodes hosted on other premises to increase computing capacity while also keeping the VPS cost low. [K3s](https://k3s.io/) distribution is selected for its lightweight resource requirements.
 
-## Master Node
+Proton also acts as a [WireGuard](https://www.wireguard.com/) VPN server, as the worker nodes will attach to the cluster via this virtual network. This allows the worker nodes to lie behind a NAT'd network (e.g. homelabs or home servers) and lose the requirement to have a public IP or to expose any ports.
 
-### 1. Install WireGuard
+## K8s Agent Setup Walkthrough
+
+This guide will setup a master node (tailored to be setup in a VPS) and worker nodes, joined via a WireGuard VPN tunnel.
+
+### Master Node
+
+#### 1. Install WireGuard
 
 ```shell
 $ apt install wireguard resolvconf
 ```
 
-### 2. Setup WireGuard Server
+#### 2. Setup WireGuard Server
 
 Use https://www.wireguardconfig.com/ to easily generate key pairs. Proton networks use the IP range `10.7.7.0/24`. Save the configuration into `/etc/wireguard/wg0.conf`
 
@@ -44,7 +50,7 @@ Start VPN.
 $ wg-quick up wg0
 ```
 
-### 3. Install K3s Server (without Traefik Ingress Controller)
+#### 3. Install K3s Server (without Traefik Ingress Controller)
 
 Conntrack is required for kube-proxy to work (implicit in their docs).
 
@@ -64,7 +70,7 @@ Set `KUBECONFIG` variable at `/etc/profile` for other tools (including Helm) to 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-### 4. Install Helm
+#### 4. Install Helm
 
 ```shell
 $ wget https://get.helm.sh/helm-v3.5.2-linux-amd64.tar.gz
@@ -72,7 +78,7 @@ $ tar -zxvf helm-v3.5.2-linux-amd64.tar.gz
 $ mv linux-amd64/helm /usr/local/bin/helm
 ```
 
-### 5. Install Traefik v2 Ingress Controller
+#### 5. Install Traefik v2 Ingress Controller
 
 See https://github.com/traefik/traefik-helm-chart for more info.
 
@@ -111,7 +117,7 @@ $ kubectl -n ingress-traefik apply -f ingress-traefik/vpn-whitelist.yaml
 
 Note the IP range is set to the VPN client IP range, keep these consistent. This Middleware will only work if Traefik's LoadBalancer's `externalTrafficPolicy` is set to `Local`.
 
-### 6. Install cert-manager
+#### 6. Install cert-manager
 
 Add the repository.
 
@@ -134,7 +140,7 @@ kubectl apply -f cert-manager/letsencrypt.yaml
 
 `ISRG Root X1` chain is used due to Let's Encrypt deprecating the old chain in late 2021. Note the `traefik-cert-manager` ingress class. This tells cert-manager to use Traefik's ingress as the endpoint when performing auto certificate retrieval using the HTTP solver.
 
-### 7. K8s Dashboard
+#### 7. K8s Dashboard
 
 Install the dashboard.
 
@@ -158,17 +164,17 @@ To open the dashboard, open an API proxy using `kubectl proxy`, then visit http:
 
 ## Worker Nodes
 
-### 1. Install WireGuard
+#### 1. Install WireGuard
 
 ```shell
 $ apt install wireguard resolvconf
 ```
 
-### 2. Setup WireGuard Client
+#### 2. Setup WireGuard Client
 
 Same method as settting up WireGuard server, see [2. Setup WireGuard Server](#2.-setup-wireguard-server)
 
-### 3. Install K3s Agent
+#### 3. Install K3s Agent
 
 Conntrack is required for kube-proxy to work (implicit in their docs).
 
