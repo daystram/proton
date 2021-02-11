@@ -1,0 +1,24 @@
+# https://github.com/traefik/traefik-helm-chart/blob/v9.14.2/traefik/values.yaml
+
+additionalArguments:
+  - "--log.level=DEBUG"
+  - "--providers.kubernetesIngress.ingressClass=traefik-cert-manager"
+
+service:
+  enabled: true
+  type: LoadBalancer
+  spec:
+    externalTrafficPolicy: Local
+
+ports:
+  web:
+    redirectTo: "websecure"
+  websecure:
+    tls:
+      enabled: true
+  # Add additional ports here
+  # rtmp:
+  #   exposedPort: 1935
+  #   port: 8935
+  #   expose: true
+  #   protocol: TCP
