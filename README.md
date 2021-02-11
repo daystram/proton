@@ -78,7 +78,7 @@ Set `KUBECONFIG` variable at `/etc/profile` for other tools (including Helm) to 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-Use this configuration to use configure the cluster from a client machine by putting it into `~/.kube/config` file, and settting the cluster IP from localhost to `10.7.7.1` (as configured on the WireGuard server configuration).
+Use this configuration to use access the cluster from a client machine by putting it into `~/.kube/config` file, and settting the cluster IP from localhost to `10.7.7.1` (as configured on the WireGuard server configuration).
 
 > :warning: This `config` file has admin access to the cluster.
 
