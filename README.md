@@ -4,23 +4,29 @@ Proton is a gateway which houses all daystram's applications at [daystram.com](h
 
 Proton also acts as a [WireGuard](https://www.wireguard.com/) VPN server, as the worker nodes will attach to the cluster via this virtual network. This allows the worker nodes to lie behind a NAT'd network (e.g. homelabs or home servers) and lose the requirement to have a public IP or to expose any ports.
 
-## K8s Agent Setup Walkthrough
+## Kubernetes Agent Setup Walkthrough
 
 This guide will setup a master node (tailored to be setup in a VPS) and worker nodes, joined via a WireGuard VPN tunnel.
 
 ### Master Node
 
-#### 1. Install WireGuard
+#### 1. Install and Setup WireGuard
+
+Install WireGuard.
 
 ```shell
 $ apt install wireguard resolvconf
 ```
 
-#### 2. Setup WireGuard Server
+Ensure IPv4 forwarding is enabled.
+
+```shell
+$ sysctl -w net.ipv4.ip_forward=1
+```
 
 Use https://www.wireguardconfig.com/ to easily generate key pairs. Proton networks use the IP range `10.7.7.0/24`. Save the configuration into `/etc/wireguard/wg0.conf`
 
-> Note the `wg0` interface name. This is kept consistent in the next steps.
+> :bulb: Note the `wg0` interface name. This is kept consistent in the next steps.
 
 Add the following to the `[Interface]` block in the `wg0.conf`, as described at https://www.reddit.com/r/WireGuard/comments/fqqqxz/connection_problem_with_wireguard_and_kubernetes/. (tl;dr: K8s kube-proxy in iptables mode messes with the IP table, this line masks K8s' configuration)
 
@@ -50,7 +56,9 @@ Start VPN.
 $ wg-quick up wg0
 ```
 
-#### 3. Install K3s Server (without Traefik Ingress Controller)
+Ensure that port `51820` is opened on the VPS firewall.
+
+#### 2. Install K3s Server (without Traefik Ingress Controller)
 
 Conntrack is required for kube-proxy to work (implicit in their docs).
 
@@ -70,7 +78,17 @@ Set `KUBECONFIG` variable at `/etc/profile` for other tools (including Helm) to 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-#### 4. Install Helm
+Use this configuration to use configure the cluster from a client machine by putting it into `~/.kube/config` file, and settting the cluster IP from localhost to `10.7.7.1` (as configured on the WireGuard server configuration).
+
+> :warning: This `config` file has admin access to the cluster.
+
+From here onwards, the setup can be done on a client machine connected to the WireGuard VPN.
+
+#### 3. Install Helm
+
+Helm is a package manager for Kubernetes. daystram's applications are also deployed via Helm charts, using the repository at https://charts.daystram.com. See https://github.com/daystram/helm-charts/ for more info daystram's Helm charts. See https://helm.sh/ for more info about Helm.
+
+Install Helm.
 
 ```shell
 $ wget https://get.helm.sh/helm-v3.5.2-linux-amd64.tar.gz
@@ -78,9 +96,9 @@ $ tar -zxvf helm-v3.5.2-linux-amd64.tar.gz
 $ mv linux-amd64/helm /usr/local/bin/helm
 ```
 
-#### 5. Install Traefik v2 Ingress Controller
+#### 4. Install Traefik v2 Ingress Controller
 
-See https://github.com/traefik/traefik-helm-chart for more info.
+See https://github.com/traefik/traefik-helm-chart for more info about installing Traefik using their Helm chart.
 
 Add the repository.
 
@@ -99,7 +117,7 @@ Note that we are overriding some of the default values from the original chart.
 
 We set `externalTrafficPolicy` for the LoadBalancer service to `Local` (from the default `Cluster`), because LoadBalancers will be SNAT'd (Source NAT) by default to allow cross-node requests (somehow still works in this use case), setting this to `Local` disables this action and thus preserves the client IP. See https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-type-loadbalancer for more info.
 
-> Note the `traefik-cert-manager` ingress class, this is used when we setup cert-manager in the next steps.
+> :bulb: Note the `traefik-cert-manager` ingress class, this is used when we setup cert-manager in the next steps.
 
 More Traefik endpoints are also added in this values file, if required.
 
@@ -117,9 +135,9 @@ $ kubectl -n ingress-traefik apply -f ingress-traefik/vpn-whitelist.yaml
 
 Note the IP range is set to the VPN client IP range, keep these consistent. This Middleware will only work if Traefik's LoadBalancer's `externalTrafficPolicy` is set to `Local`.
 
-#### 6. Install cert-manager
+#### 5. Install cert-manager
 
-cert-manager helps with issuing new X509 certificates for applications that require them. By creating Certificate objects (a CRD from cert-manger), a new certificate will be claimed from [Let's Encrypt](https://letsencrypt.org/) using the HTTP solver. This certificate is then used by Traefik's `websecure` endpoint. See https://cert-manager.io/docs/ for more info.
+cert-manager helps with issuing new X509 certificates for applications that require them. By creating Certificate objects (a CRD from cert-manger), a new certificate will be claimed from [Let's Encrypt](https://letsencrypt.org/) using the HTTP solver. This certificate is then used by Traefik's `websecure` endpoint. See https://cert-manager.io/docs/ for more info about cert-manager.
 
 Add the repository.
 
@@ -142,7 +160,7 @@ kubectl apply -f cert-manager/letsencrypt.yaml
 
 `ISRG Root X1` chain is used due to Let's Encrypt deprecating the old chain in late 2021. Note the `traefik-cert-manager` ingress class. This tells cert-manager to use Traefik's ingress as the endpoint when performing auto certificate retrieval using the HTTP solver.
 
-#### 7. K8s Dashboard
+#### 6. K8s Dashboard
 
 Install the dashboard.
 
@@ -151,6 +169,8 @@ $ kubectl -n kubernetes-dashboard apply -f https://raw.githubusercontent.com/kub
 ```
 
 Create a ServiceAccount with its ClusterRoleBinding.
+
+> :warning: This service account has admin access to the cluster.
 
 ```shell
 $ kubectl -n kubernetes-dashboard apply -f kubernetes-dashboard/serviceaccount.yaml
@@ -168,15 +188,11 @@ To open the dashboard, open an API proxy using `kubectl proxy`, then visit http:
 
 #### 1. Install WireGuard
 
-```shell
-$ apt install wireguard resolvconf
-```
+Same method as installing WireGuard on the master node. See [1. Install and Setup WireGuard](#1-install-and-setup-wireguard).
 
-#### 2. Setup WireGuard Client
+Use the one of the client configurations generated above.
 
-Same method as settting up WireGuard server, see [2. Setup WireGuard Server](#2-setup-wireguard-server)
-
-#### 3. Install K3s Agent
+#### 2. Install K3s Agent
 
 Conntrack is required for kube-proxy to work (implicit in their docs).
 
@@ -192,4 +208,4 @@ $ curl -sfL https://get.k3s.io | K3S_URL=https://10.7.7.1:6443 K3S_TOKEN=TOKEN_F
 
 Note the interface name `wg0` from what's set before. This affixes the IP bindings for flannel CNI to the VPN's interface (it defaults to the host's default interface, e.g. `eth0`), which wouldn't work since this node lies behind NAT.
 
-See https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#agent-networking for more info on agent networking configuration.
+See https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#agent-networking for more info about K3s agent networking configuration.
