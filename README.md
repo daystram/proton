@@ -69,8 +69,10 @@ $ apt install conntrack
 We'll use K3s, ensure that Traefik is disabled, we will install it separately to get v2 (default installed is Traefik v1).
 
 ```shell
-$ curl -sfL https://get.k3s.io | K3S_NODE_NAME=proton sh -s - --disable traefik
+$ curl -sfL https://get.k3s.io | K3S_NODE_NAME=proton sh -s - --disable traefik --disable-cloud-controller
 ```
+
+We add the disable countroller flag to prevent K3s from running its own _dummy_ CCM, which requires a large amount of resource. To further reduce the control plane resource requirement (at the cost of performance), `GOGC=10` environment variable can be added to the K3s service at `/etc/systemd/system/k3s.service.env` (write permission restricted).
 
 Set `KUBECONFIG` variable at `/etc/profile` for other tools (including Helm) to default to.
 
