@@ -1,0 +1,42 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`k8s.daystram.com`)
+      middlewares:
+        - name: vpn-whitelist
+          namespace: ingress-traefik
+      services:
+        - name: kubernetes-dashboard
+          passHostHeader: true
+          port: 443
+          serversTransport: kubernetes-dashboard
+  tls:
+    secretName: cert-kubernetes-dashboard
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: ServersTransport
+metadata:
+  name: kubernetes-dashboard
+spec:
+  serverName: k8s.daystram.com
+  insecureSkipVerify: true
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kubernetes-dashboard
+spec:
+  dnsNames:
+    - k8s.daystram.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: cert-kubernetes-dashboard
