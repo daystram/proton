@@ -117,7 +117,26 @@ helm -n ingress-traefik install traefik traefik/traefik --create-namespace --val
 
 Note that we are overriding some of the default values from the original chart.
 
-We set `externalTrafficPolicy` for the LoadBalancer service to `Local` (from the default `Cluster`), because LoadBalancers will be SNAT'd (Source NAT) by default to allow cross-node requests (somehow still works in this use case), setting this to `Local` disables this action and thus preserves the client IP. See https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-type-loadbalancer for more info.
+We set `externalTrafficPolicy` for the LoadBalancer service to `Local` (from the default `Cluster`), because LoadBalancers will be SNAT'd (Source NAT) by default to allow cross-node requests (somehow still works in this use case), setting this to `Local` disables this action and thus preserves the client IP. We also have to ensure that the Traefik controller pod runs on the node where the traffic comes in, on our case its the master node, Proton -- otherwise, the control pod will read the incoming IPs already being NAT'd. Thus, we can edit the deployment configuration as follows:
+
+```shell
+$ kubectl -n ingress-traefik deployment/traefik
+```
+
+and add the following to the template spec:
+```yaml
+# ...
+spec:
+  # ...
+  template:
+    # ...
+    spec:
+      # ...
+      nodeSelector:
+        kubernetes.io/hostname: proton
+```
+
+See https://kubernetes.io/docs/tutorials/services/source-ip/#source-ip-for-services-with-type-loadbalancer for more info.
 
 > :bulb: Note the `traefik-cert-manager` ingress class, this is used when we setup cert-manager in the next steps.
 
