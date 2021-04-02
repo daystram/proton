@@ -157,7 +157,7 @@ $ kubectl -n ingress-traefik port-forward $(kubectl -n ingress-traefik get pods 
 Create a VPN whitelist Middleware. This is useful if we want to expose certain internal applications only to the VPN clients.
 
 ```shell
-$ kubectl -n ingress-traefik apply -f ingress-traefik/vpn-whitelist.yaml
+$ kubectl -n ingress-traefik apply -f ingress-traefik/vpn-whitelist.yml
 ```
 
 Note the IP range is set to the VPN client IP range, keep these consistent. This Middleware will only work if Traefik's LoadBalancer's `externalTrafficPolicy` is set to `Local`.
@@ -182,7 +182,7 @@ $ helm -n cert-manager install cert-manager jetstack/cert-manager --create-names
 Install the ClusterIssuer.
 
 ```shell
-kubectl apply -f cert-manager/letsencrypt.yaml
+kubectl apply -f cert-manager/letsencrypt.yml
 ```
 
 `ISRG Root X1` chain is used due to Let's Encrypt deprecating the old chain in late 2021. Note the `traefik-cert-manager` ingress class. This tells cert-manager to use Traefik's ingress as the endpoint when performing auto certificate retrieval using the HTTP solver.
@@ -192,7 +192,7 @@ kubectl apply -f cert-manager/letsencrypt.yaml
 Install the dashboard.
 
 ```shell
-$ kubectl -n kubernetes-dashboard apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0/aio/deploy/recommended.yaml
+$ kubectl -n kubernetes-dashboard apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0/aio/deploy/recommended.yml
 ```
 
 Create a ServiceAccount with its ClusterRoleBinding.
@@ -200,7 +200,7 @@ Create a ServiceAccount with its ClusterRoleBinding.
 > :warning: This service account has admin access to the cluster.
 
 ```shell
-$ kubectl -n kubernetes-dashboard apply -f kubernetes-dashboard/serviceaccount.yaml
+$ kubectl -n kubernetes-dashboard apply -f kubernetes-dashboard/serviceaccount.yml
 ```
 
 Get the access token from the secret.
@@ -227,7 +227,7 @@ Create namespace, persistent volume, and persistent volume claim.
 
 ```shell
 $ kubectl create namespace metrics
-$ kubectl -n metrics apply -f metrics/grafana/persistentvolume.yaml
+$ kubectl -n metrics apply -f metrics/grafana/persistentvolume.yml
 ```
 
 Install Grafana and Prometheus charts.
