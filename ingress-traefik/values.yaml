@@ -3,12 +3,14 @@
 additionalArguments:
   - "--log.level=DEBUG"
   - "--providers.kubernetesIngress.ingressClass=traefik-cert-manager"
+  - "--metrics.prometheus=true"
 
 service:
   enabled: true
   type: LoadBalancer
   spec:
     externalTrafficPolicy: Local
+    loadBalancerIP: <EXTERNAL_IP>
 
 ports:
   web:
