@@ -1,0 +1,24 @@
+persistence:
+  enabled: true
+  existingClaim: pvc-grafana
+  size: 1Gi
+  accessMode: ReadWriteMany
+initChownData:
+  enabled: false
+grafana.ini:
+  server:
+    domain: dash.daystram.com
+    root_url: https://dash.daystram.com/
+  auth:
+    disable_login_form: false  # disables default login form
+  auth.generic_oauth:
+    enabled: true
+    allow_sign_up: true
+    name: Ratify
+    client_id: <RATIFY_CLIENT_ID>
+    client_secret: <RATIFY_CLIENT_SECRET>
+    scopes: openid profile
+    email_attribute_path: preferred_username
+    auth_url: https://ratify.daystram.com/authorize
+    token_url: https://ratify.daystram.com/oauth/token
+    api_url: https://ratify.daystram.com/oauth/userinfo

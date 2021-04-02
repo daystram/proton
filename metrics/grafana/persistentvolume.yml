@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-grafana
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: 10.7.7.1
+    path: "/var/nfs/k8s/grafana"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-grafana
+spec:
+  volumeName: pv-grafana
+  storageClassName: "" # Empty string must be explicitly set otherwise default StorageClass will be set
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+       storage: 1Gi

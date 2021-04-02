@@ -1,0 +1,29 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`dash.daystram.com`)
+      services:
+        - name: grafana
+          passHostHeader: true
+          port: 80
+  tls:
+    secretName: cert-grafana
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana
+spec:
+  dnsNames:
+    - dash.daystram.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: cert-grafana
