@@ -4,6 +4,8 @@ Proton is a gateway which houses all daystram's applications at [daystram.com](h
 
 Proton also acts as a [WireGuard](https://www.wireguard.com/) VPN server, as the worker nodes will attach to the cluster via this virtual network. This allows the worker nodes to lie behind a NAT'd network (e.g. homelabs or home servers) and lose the requirement to have a public IP or to expose any ports.
 
+This guide is valid as of K3s/Kubelet version `v1.20.2+k3s1`.
+
 ## Kubernetes Agent Setup Walkthrough
 
 This guide will setup a master node (tailored to be setup in a VPS) and worker nodes, joined via a WireGuard VPN tunnel.
@@ -69,10 +71,12 @@ $ apt install conntrack
 We'll use K3s, ensure that Traefik is disabled, we will install it separately to get v2 (default installed is Traefik v1).
 
 ```shell
-$ curl -sfL https://get.k3s.io | K3S_NODE_NAME=proton sh -s - --disable traefik --disable-cloud-controller
+$ curl -sfL https://get.k3s.io | K3S_NODE_NAME=proton sh -s - --disable traefik --disable-cloud-controller # --docker
 ```
 
 We add the disable countroller flag to prevent K3s from running its own _dummy_ CCM, which requires a large amount of resource. To further reduce the control plane resource requirement (at the cost of performance), `GOGC=10` environment variable can be added to the K3s service at `/etc/systemd/system/k3s.service.env` (write permission restricted).
+
+Use the `--docker` flag to use Docker backend. Docker backend is required for detailed metrics scraped by the built-in cAdvisor (as of writing, containerd is not yet supported by cAdvisor).
 
 Set `KUBECONFIG` variable at `/etc/profile` for other tools (including Helm) to default to.
 
@@ -112,7 +116,7 @@ $ helm repo update
 Install Traefik. This also install the [CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) by default.
 
 ```shell
-helm -n ingress-traefik install traefik traefik/traefik --create-namespace --values ingress-traefik/values.yaml
+helm -n ingress-traefik install traefik traefik/traefik --create-namespace --values ingress-traefik/values.yml
 ```
 
 Note that we are overriding some of the default values from the original chart. Adjust `service.spec.loadBalancerIP` to the external IP of your the traffic entrypoint node.
@@ -207,6 +211,34 @@ $ kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard g
 
 To open the dashboard, open an API proxy using `kubectl proxy`, then visit http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ and authenticate using token from above.
 
+### 7. Metrics Monitoring
+
+Grafana with Prometheus datasource is used to monitor metrics of the cluster. The built-in cAdvisor in K3s distribution is scraped by Prometheus in this default configuration.
+
+Add the repository.
+
+```shell
+$ helm repo add grafana https://grafana.github.io/helm-charts
+$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+$ helm repo update
+```
+
+Create namespace, persistent volume, and persistent volume claim.
+
+```shell
+$ kubectl create namespace metrics
+$ kubectl -n metrics apply -f metrics/grafana/persistentvolume.yaml
+```
+
+Install Grafana and Prometheus charts.
+
+```shell
+$ helm install -n metrics prometheus prometheus-community/prometheus
+$ helm install -n metrics grafana grafana/grafana --values metrics/grafana/values.yml
+```
+
+We are using [Ratify OAuth](https://ratify.daystram.com) to replace the default Grafana login form. User signing in via Ratify will be given Viewer roles. To set one as an admin, the starting generated admin user has to be used. Set `"grafana.ini".auth.disable_login_form: true` to disable the default login form afterwards. Set the OAuth `client_id` and `client_secret` accordingly based on the created application in Ratify.
+
 ## Worker Nodes
 
 #### 1. Install WireGuard
@@ -226,9 +258,13 @@ $ apt install conntrack
 Ensure VPN is connected and master node is setup and server is on `10.7.7.1`. Get the token from the master node at `/var/lib/rancher/k3s/server/token`. Install K3s worker node.
 
 ```shell
-$ curl -sfL https://get.k3s.io | K3S_URL=https://10.7.7.1:6443 K3S_TOKEN=TOKEN_FROM_MASTER K3S_NODE_NAME=tambun sh -s - --flannel-iface wg0
+$ curl -sfL https://get.k3s.io | K3S_URL=https://10.7.7.1:6443 K3S_TOKEN=TOKEN_FROM_MASTER K3S_NODE_NAME=tambun sh -s - --flannel-iface wg0 # --docker
 ```
 
 Note the interface name `wg0` from what's set before. This affixes the IP bindings for flannel CNI to the VPN's interface (it defaults to the host's default interface, e.g. `eth0`), which wouldn't work since this node lies behind NAT.
+
+Use the `--docker` flag to use Docker backend. Docker backend is required for detailed metrics scraped by the built-in cAdvisor (as of writing, containerd is not yet supported by cAdvisor).
+
+Ensure that the K3s version used by the worker node is the same as the master node (not newer). Set the environment variable `INSTALL_K3S_VERSION` if necessary.
 
 See https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#agent-networking for more info about K3s agent networking configuration.
