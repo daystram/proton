@@ -20,6 +20,7 @@ spec:
     secretName: cert-kubernetes-dashboard
 
 ---
+# disable TLS betwwen Traefik and K8s Dashboard HTTP backend
 apiVersion: traefik.containo.us/v1alpha1
 kind: ServersTransport
 metadata:
