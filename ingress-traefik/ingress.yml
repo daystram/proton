@@ -1,0 +1,47 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: traefik-dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: traefik
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: traefik
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`traefik.daystram.com`)
+      middlewares:
+        - name: vpn-whitelist
+          namespace: ingress-traefik
+      services:
+        - name: traefik-dashboard
+          passHostHeader: true
+          port: 80
+  tls:
+    secretName: cert-traefik-dashboard
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: traefik-dashboard
+spec:
+  dnsNames:
+    - traefik.daystram.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: cert-traefik-dashboard
