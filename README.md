@@ -211,11 +211,11 @@ $ kubectl -n kubernetes-dashboard get secret $(kubectl -n kubernetes-dashboard g
 
 To open the dashboard, open an API proxy using `kubectl proxy`, then visit http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ and authenticate using token from above.
 
-### 7. Metrics Monitoring
+#### 7. Metrics Monitoring
 
 Grafana with Prometheus datasource is used to monitor metrics of the cluster. The built-in cAdvisor in K3s distribution is scraped by Prometheus in this default configuration.
 
-Add the repository.
+Add the repositories.
 
 ```shell
 $ helm repo add grafana https://grafana.github.io/helm-charts
